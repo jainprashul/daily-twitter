@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Configuration, OpenAIApi } from "openai";
 import { TwitterApi } from "twitter-api-v2";
 import cron from "node-cron";
+import axios from "axios";
 // get the open ai function get the text based on the prompt
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
@@ -54,10 +55,62 @@ async function autoTweet() {
   console.log("Tweetting....");
   const str = await askGPT("Give a one right now.");
   await tweet(str);
+  await postToLinkedIn(str);
   console.log("Tweeted....");
+}
+
+async function postToLinkedIn(text : string) {
+  try {
+    // Fetch the user's profile
+    const profileResponse = await axios.get(
+      'https://api.linkedin.com/v2/me',
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.L_ACCESS_TOKEN}`,
+          'cache-control': 'no-cache',
+          'X-Restli-Protocol-Version': '2.0.0'
+        }
+      }
+    );
+    
+    const profileData = profileResponse.data;
+    const authorId = `urn:li:person:${profileData.id}`;
+
+    // Create the post
+    const response = await axios.post(
+      'https://api.linkedin.com/v2/ugcPosts',
+      {
+        author: authorId,
+        lifecycleState: 'PUBLISHED',
+        specificContent: {
+          'com.linkedin.ugc.ShareContent': {
+            shareCommentary: {
+              text: text,
+            },
+            shareMediaCategory: 'NONE',
+          },
+        },
+        visibility: {
+          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
+        },
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.L_ACCESS_TOKEN}`,
+        },
+      }
+    );
+
+    console.log('Post created successfully:', response.data);
+  } catch (error : any) {
+    console.error('Error creating post:', error.response.data);
+  }
 }
 
 cron.schedule("0 12,17 * * *", () => {
   console.log(new Date().toLocaleString());
   autoTweet();
+}, {
+  timezone : "Asia/Kolkata"
 });

@@ -7,6 +7,7 @@ require("dotenv/config");
 const openai_1 = require("openai");
 const twitter_api_v2_1 = require("twitter-api-v2");
 const node_cron_1 = __importDefault(require("node-cron"));
+const axios_1 = __importDefault(require("axios"));
 // get the open ai function get the text based on the prompt
 const configuration = new openai_1.Configuration({
     apiKey: process.env.OPENAI_API_KEY,
@@ -47,11 +48,59 @@ async function tweet(text) {
 }
 async function autoTweet() {
     console.log("Tweetting....");
-    const str = await askGPT("Give a one right now. Make sure no duplicate tweets and confirmation.");
+    const str = await askGPT("Give a one right now.");
     await tweet(str);
+    await postToLinkedIn(str);
     console.log("Tweeted....");
 }
+async function postToLinkedIn(text) {
+    try {
+        // Fetch the user's profile
+        const profileResponse = await axios_1.default.get('https://api.linkedin.com/v2/me', {
+            headers: {
+                'Authorization': `Bearer ${process.env.L_ACCESS_TOKEN}`,
+                'cache-control': 'no-cache',
+                'X-Restli-Protocol-Version': '2.0.0'
+            }
+        });
+        const profileData = profileResponse.data;
+        const authorId = `urn:li:person:${profileData.id}`;
+        // Create the post
+        const response = await axios_1.default.post('https://api.linkedin.com/v2/ugcPosts', {
+            author: authorId,
+            lifecycleState: 'PUBLISHED',
+            specificContent: {
+                'com.linkedin.ugc.ShareContent': {
+                    shareCommentary: {
+                        text: text,
+                    },
+                    shareMediaCategory: 'NONE',
+                },
+            },
+            visibility: {
+                'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
+            },
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.L_ACCESS_TOKEN}`,
+            },
+        });
+        console.log('Post created successfully:', response.data);
+    }
+    catch (error) {
+        console.error('Error creating post:', error.response.data);
+    }
+}
+// cron.schedule("0 12,17 * * *", () => {
+//   console.log(new Date().toLocaleString());
+//   autoTweet();
+// }, {
+//   timezone : "Asia/Kolkata"
+// });
 node_cron_1.default.schedule("*/1 * * * *", () => {
     console.log(new Date().toLocaleString());
     autoTweet();
+}, {
+    timezone: "Asia/Kolkata"
 });
