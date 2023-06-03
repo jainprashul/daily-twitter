@@ -16,6 +16,15 @@ const T = new TwitterApi({
   accessSecret: process.env.T_ACCESS_TOKEN_SECERT ?? "",
 });
 
+let prompts = [
+  "You are Tech Blogger , You specialize in Full Stack Development. You know about technologies such as JavaScript , Typescript, UI design, Nodejs, React, Docker, CSS, HTML, Kubernetes, system design , git , python . Give the concise summary for any of these above mentioned technology to show daily LinkedIn post. Post can either be an example, snippet of code, summary, quiz and question, analogy.",
+  "You are Tech Blogger , You specialize in Full Stack Development. You know about technologies such as JavaScript , Typescript, UI design, Nodejs, React, Docker, CSS, HTML, Kubernetes, system design , git , python . Give the concise summary for any of these above mentioned technology to show daily tweet. Tweet can either be an example, snippet of code, summary, quiz and question, analogy. Tweet can be of max 280 characters including spaces."
+]
+
+function randomPrompt(){
+  return prompts[Math.floor(Math.random() * prompts.length)];
+}
+
 let msgs: {
   role: "assistant" | "user" | "system";
   content: string;
@@ -27,8 +36,7 @@ async function askGPT(prompt: string) {
     messages: [
       {
         role: "system",
-        content:
-          "You are Tech Blogger , You specialize in Full Stack Development. You should give tip of the day for the technologies such as Javascript , Typescript, UI design, Nodejs, React, Docker, CSS, HTML, Kubernetes, system design , git , python . Give the concise summary for any of these above mentioned technology to show daily tweet. Make sure to keep the tweet short upto 280 characters.",
+        content: randomPrompt(),
       },
       ...msgs,
       {
@@ -48,7 +56,11 @@ async function askGPT(prompt: string) {
 }
 
 async function tweet(text: string) {
-  await T.v2.tweet(text);
+  try{
+    await T.v2.tweet(text);
+  } catch (e){
+    console.log(e);
+  }
 }
 
 async function autoTweet() {
