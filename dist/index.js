@@ -104,7 +104,7 @@ async function postToLinkedIn(text) {
         console.error('Error creating post:', error.response.data);
     }
 }
-node_cron_1.default.schedule("*/1 * * * *", () => {
+node_cron_1.default.schedule("0 12,17 * * *", () => {
     console.log(new Date().toLocaleString());
     autoTweet();
 }, {
